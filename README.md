@@ -146,9 +146,9 @@ curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 ./venv/bin/python3 get-pip.py && rm get-pip.py
 
 # 2. PyInstaller 설치 및 웹 뷰어 데이터 포함 단일 파일 빌드
-# (Vite로 React 앱이 빌드된 web/dist 폴더가 사전에 생성되어 있어야 합니다)
+# (Vite로 React 앱이 빌드된 web/frontend/dist 폴더가 사전에 생성되어 있어야 합니다)
 ./venv/bin/pip install pyinstaller
-./venv/bin/pyinstaller --onefile --name srdocs --add-data "web/dist:web/dist" run.py
+./venv/bin/pyinstaller --onefile --name srdocs --add-data "web/frontend/dist:web/frontend/dist" run.py
 
 # 3. 임시 빌드 환경 정리 (최종 파일은 dist/srdocs 에 위치)
 rm -rf venv build srdocs.spec
@@ -157,7 +157,7 @@ rm -rf venv build srdocs.spec
 ### ⚠️ 배포 및 실행 시 주의점
 1. **OS 및 아키텍처 의존성**: 생성된 실행 파일(`dist/srdocs` 등)은 빌드된 플랫폼(예: Linux x86_64)에 종속됩니다. 다른 환경(Windows, macOS, ARM 계열 등)에서 사용하려면 해당 OS 환경에서 각각 별도로 빌드해야 합니다.
 2. **외부 CLI 명령어 의존성**: 단일 파일 내에 파이썬 인터프리터와 프로그램 소스 코드는 내장되어 컴파일되지만, 시스템의 `git` 명령어, LLM 백엔드 호출을 위한 `claude` CLI 등 외부 프로그램들은 패키징에 포함되지 않습니다. 실행할 호스트 머신에 해당 명령어들이 존재해야 합니다.
-3. **내장 웹 뷰어 실행 (`--serve`)**: `--add-data "web/dist:web/dist"` 플래그를 추가하여 빌드하면 실행 파일 하나만으로도 웹 UI 분석 서버를 실행할 수 있습니다. 별도의 `web/` 폴더를 함께 배포하지 않아도 실행 파일이 임시 디렉토리에 웹 정적 리소스를 해제한 뒤 로컬 서버를 띄워 자동으로 브라우저에 연결해 줍니다.
+3. **내장 웹 뷰어 실행 (`--serve`)**: `--add-data "web/frontend/dist:web/frontend/dist"` 플래그를 추가하여 빌드하면 실행 파일 하나만으로도 웹 UI 분석 서버를 실행할 수 있습니다. 별도의 `web/frontend/` 폴더를 함께 배포하지 않아도 실행 파일이 임시 디렉토리에 웹 정적 리소스를 해제한 뒤 로컬 서버를 띄워 자동으로 브라우저에 연결해 줍니다.
    ```bash
    # 로컬 8000 포트에서 내장 웹 뷰어 호스팅
    ./dist/srdocs --serve
@@ -173,4 +173,6 @@ rm -rf venv build srdocs.spec
 - [core/summarizer.py](file:///Users/mypc/projects/git-llm-wiki/core/summarizer.py): LLM 요약 제어 및 조율
 - [core/llm/](file:///Users/mypc/projects/git-llm-wiki/core/llm): Gemini/Ollama/Claude API 등 LLM 백엔드 구현
 - [core/cli.py](file:///Users/mypc/projects/git-llm-wiki/core/cli.py): CLI 서브커맨드 및 흐름 제어
+- [web/backend/server.py](file:///Users/mypc/projects/git-llm-wiki/web/backend/server.py): 웹 뷰어 서빙용 로컬 HTTP API 서버
+- [web/frontend/](file:///Users/mypc/projects/git-llm-wiki/web/frontend): React 웹 뷰어 UI 소스 코드
 - [run.py](file:///Users/mypc/projects/git-llm-wiki/run.py): 프로젝트 실행 스크립트 진입점

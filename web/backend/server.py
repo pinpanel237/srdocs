@@ -10,8 +10,8 @@ def get_resource_path(relative_path):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
-        # Fallback to the project root directory
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Fallback to the project root directory (three levels up: core/backend/server.py -> root)
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base_path, relative_path)
 
 class WikiHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -26,7 +26,7 @@ class WikiHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             actual_path = os.path.join(self.server.vault_dir, relative_path)
             return os.path.abspath(actual_path)
             
-        # 그 외의 모든 요청(HTML, JS, CSS 등 정적 웹 리소스)은 web/dist 폴더로 매핑
+        # 그 외의 모든 요청(HTML, JS, CSS 등 정적 웹 리소스)은 web/frontend/dist 폴더로 매핑
         relative_path = decoded_path.lstrip("/")
         actual_path = os.path.join(self.server.web_dist_dir, relative_path)
         

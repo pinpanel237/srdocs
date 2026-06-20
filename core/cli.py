@@ -6,7 +6,7 @@ from collections import defaultdict
 from .analyzer import GitAnalyzer
 from .generator import WikiGenerator
 from .summarizer import LLMSummarizer
-from .server import run_server, get_resource_path
+from web.backend.server import run_server, get_resource_path
 
 # 설정 파일 및 위키 저장을 위한 통합 디렉토리 정의
 VAULT_BASE_DIR = os.path.join(os.path.expanduser("~"), "srdocs-vault")
@@ -198,7 +198,7 @@ def main():
     
     # 웹 서버 구동은 분석 대상 루프를 돌기 전에 단 한 번만 실행합니다.
     if args.serve:
-        web_dist_dir = get_resource_path("web/dist")
+        web_dist_dir = get_resource_path("web/frontend/dist")
         print(f"📡 웹 뷰어 서버 구동 중: {VAULT_BASE_DIR} 포트: {args.port}")
         run_server(VAULT_BASE_DIR, web_dist_dir, port=args.port)
         sys.exit(0)
