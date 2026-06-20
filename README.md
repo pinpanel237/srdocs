@@ -10,10 +10,10 @@ A Python-based CLI tool that analyzes the file structure and Git commit history 
 
 - **순수 표준 라이브러리 사용 (Zero Dependencies)**: 외부 라이브러리 설치 필요 없이 Python 3만 있으면 즉시 실행 가능합니다.
 - **초기 대화형 설정 마법사 및 설정 파일 지원 (Wizard & Configuration)**:
-  - 첫 실행 시 대화형 설정 마법사(`run_wizard`)가 실행되어 저장소 경로, 문서 저장 폴더, LLM 연동 정보 등을 입력받습니다.
-  - 입력값은 `git_wiki_config.json`에 저장되어 이후 실행의 기본값으로 적용되며, 자동화(CI/CD) 환경에서는 멈추지 않고 생략됩니다.
+  - 첫 실행 시 대화형 설정 마법사(`run_wizard`)가 실행되어 여러 저장소 경로 목록, 문서 저장 폴더, LLM 연동 정보 등을 입력받습니다.
+  - 입력값은 홈 디렉토리의 `.srdocs` 파일에 저장되어 이후 실행의 기본값으로 적용되며, 자동화(CI/CD) 환경에서는 멈추지 않고 생략됩니다.
 - **로컬 캐싱 및 증분 분석 (Caching & Token Saving)**: 
-  - 릴리즈 태그와 파일 목록의 SHA-256 해시 키를 기준으로 이미 분석된 버전/프로젝트 요약을 로컬 캐시(사용자 홈 디렉토리의 `~/.cache-git-llm-wiki/`)에 저장합니다.
+  - 릴리즈 태그와 파일 목록의 SHA-256 해시 키를 기준으로 이미 분석된 버전/프로젝트 요약을 로컬 캐시(사용자 홈 디렉토리의 `~/.cache/git-llm-wiki/`)에 저장합니다.
   - 다음 실행 시 캐시된 요약을 로드하여 중복 LLM 호출과 토큰 소모를 방지합니다.
 - **폴더 분할형 위키 생성 (Vault Mode)**:
   - 출력 경로에 확장자(`.md`) 대신 폴더명을 지정하면 카르파시의 LLM Wiki 설계에 부합하는 `index.md`, `overview.md`, `log.md`, `versions/`, `components/`, `decisions/` 구조의 Obsidian 호환 Vault 디렉토리를 구축합니다.
@@ -39,7 +39,7 @@ A Python-based CLI tool that analyzes the file structure and Git commit history 
 ### 1. 수동 모드 (Manual Mode) - [현재 구현 완료]
 - **어떻게 동작하나요?**: CLI 명령 또는 초기 대화형 마법사(`--init`)를 통해 특정 폴더 경로 또는 Git 원격 주소를 수동 지정하여 일회성으로 문서를 빌드합니다.
 - **주요 용도**: 개발 및 로컬 테스트 환경, 소형 독립 위키 배포.
-- **명령 예시**: `python3 run.py --repo /path/to/repo --output vault/my-project`
+- **명령 예시**: `srdocs --repo /path/to/repo --output vault/my-project`
 
 ### 2. 자동 모드 (Auto Mode) - [개발 계획 / 로드맵]
 - **어떻게 동작하나요?**: 개발자가 코드를 푸시하면 배포 환경이 감지하여 위키를 실시간 갱신합니다.
@@ -68,47 +68,47 @@ A Python-based CLI tool that analyzes the file structure and Git commit history 
 ## 🚀 빠른 시작 (Quick Start)
 
 ### 0. 초기 대화형 설정 구성
-프로젝트를 처음 구동할 때 아래 명령을 실행하면 저장소 경로, 위키 저장 경로(기본값: `vault`), LLM 설정을 입력받아 구성 파일(`git_wiki_config.json`)을 생성합니다.
+프로젝트를 처음 구동할 때 아래 명령을 실행하면 저장소 경로 목록, 위키 저장 경로(기본값: `srdocs-vault`), LLM 설정을 입력받아 구성 파일(`.srdocs`)을 생성합니다.
 ```bash
-python3 run.py --init
+srdocs --init
 ```
-이후부터는 매번 CLI 옵션을 길게 적지 않고도 `python3 run.py`만으로 설정된 기본값에 맞춰 위키가 자동 생성됩니다.
+이후부터는 매번 CLI 옵션을 길게 적지 않고도 `srdocs`만으로 설정된 기본값에 맞춰 등록된 저장소들의 위키가 프로젝트별 폴더로 자동 생성됩니다.
 
 ### 1. 단일 마크다운 파일 위키 생성
 ```bash
-python3 run.py --repo /path/to/your/git-repo --output WIKI.md
+srdocs --repo /path/to/your/git-repo --output WIKI.md
 ```
 
 ### 2. 폴더 분할형 위키 Vault 구축 (카르파시 LLM Wiki 스타일)
 ```bash
-# 기본 설정된 vault/ 디렉토리 하위에 문서 빌드
-python3 run.py
+# 기본 설정된 srdocs-vault/ 디렉토리 하위에 문서 일괄 빌드
+srdocs
 ```
 
 ### 3. 생성된 위키 정합성 린트 검사
 ```bash
-python3 run.py --repo /path/to/your/git-repo --output wiki_vault --lint
+srdocs --repo /path/to/your/git-repo --output wiki_vault --lint
 ```
 
 ### 4. 코드 분석 질의 및 위키 누적 저장
 ```bash
 export GEMINI_API_KEY="your-api-key"
-python3 run.py --repo /path/to/your/git-repo --output wiki_vault --query "하이브리드 검색 구현 방식을 알려줘" --llm gemini
+srdocs --repo /path/to/your/git-repo --output wiki_vault --query "하이브리드 검색 구현 방식을 알려줘" --llm gemini
 ```
 
 ### 5. Obsidian 연동용 상대 링크로 Vault 구축
 ```bash
-python3 run.py --repo /path/to/your/git-repo --output wiki_vault --link-type rel
+srdocs --repo /path/to/your/git-repo --output wiki_vault --link-type rel
 ```
 
 ### 6. 내장 웹 뷰어로 위키 시각화 및 검토 (로컬 서버 구동)
 생성된 위키 폴더 데이터를 파이썬 내장 HTTP 서버를 통해 웹 뷰어 앱으로 시각화하여 로컬 브라우저에서 바로 확인합니다.
 ```bash
-# 기본 vault 폴더를 읽어 로컬 웹 서버(8000포트)를 구동하고 브라우저로 연결
-python3 run.py --serve
+# 기본 srdocs-vault 폴더를 읽어 로컬 웹 서버(8000포트)를 구동하고 브라우저로 연결
+srdocs --serve
 
 # 특정 위키 폴더 지정 및 포트(예: 9000) 변경 시
-python3 run.py --serve --output wiki_vault --port 9000
+srdocs --serve --output wiki_vault --port 9000
 ```
 
 ---
@@ -117,11 +117,11 @@ python3 run.py --serve --output wiki_vault --port 9000
 
 | 옵션 | 설명 | 기본값 |
 |---|---|---|
-| `--init` | 대화형 설정 마법사를 실행하여 `git_wiki_config.json`을 생성 | False (store_true) |
-| `--repo` | 분석 대상 로컬 Git 저장소 경로 | `git_wiki_config.json` 설정값 또는 `.` |
-| `--output` | 생성할 위키 파일 경로(.md) 또는 위키 폴더 경로 | `git_wiki_config.json` 설정값 또는 `vault` |
-| `--link-type` | 위키 내부 파일 바로가기 형식 (`abs`: 절대 경로 `file://` 링크, `rel`: 상대 경로 링크) | `git_wiki_config.json` 설정값 또는 `abs` |
-| `--llm` | LLM 요약 백엔드 (`gemini` / `ollama` / `claude` / `none`) | `git_wiki_config.json` 설정값 또는 `none` |
+| `--init` | 대화형 설정 마법사를 실행하여 `.srdocs`을 생성 | False (store_true) |
+| `--repo` | 분석 대상 로컬 Git 저장소 경로 | `.srdocs` 설정 내의 repos 목록 또는 `.` |
+| `--output` | 생성할 위키 파일 경로(.md) 또는 위키 폴더 경로 | `.srdocs` 설정값 또는 `srdocs-vault` |
+| `--link-type` | 위키 내부 파일 바로가기 형식 (`abs`: 절대 경로 `file://` 링크, `rel`: 상대 경로 링크) | `.srdocs` 설정값 또는 `abs` |
+| `--llm` | LLM 요약 백엔드 (`gemini` / `ollama` / `claude` / `none`) | `.srdocs` 설정값 또는 `none` |
 | `--api-key` | Gemini API 인증 키 (미지정 시 환경변수 및 설정값 참조) | 설정값 또는 `GEMINI_API_KEY` |
 | `--model` | LLM 모델명 | 설정값 또는 백엔드별 기본 모델 |
 | `--api-url` | LLM API 주소 (Ollama, 기타 REST API 등) | 설정값 또는 None |
@@ -148,31 +148,29 @@ curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 # 2. PyInstaller 설치 및 웹 뷰어 데이터 포함 단일 파일 빌드
 # (Vite로 React 앱이 빌드된 web/dist 폴더가 사전에 생성되어 있어야 합니다)
 ./venv/bin/pip install pyinstaller
-./venv/bin/pyinstaller --onefile --name git-llm-wiki --add-data "web/dist:web/dist" run.py
+./venv/bin/pyinstaller --onefile --name srdocs --add-data "web/dist:web/dist" run.py
 
-# 3. 임시 빌드 환경 정리 (최종 파일은 dist/git-llm-wiki 에 위치)
-rm -rf venv build git-llm-wiki.spec
+# 3. 임시 빌드 환경 정리 (최종 파일은 dist/srdocs 에 위치)
+rm -rf venv build srdocs.spec
 ```
 
 ### ⚠️ 배포 및 실행 시 주의점
-1. **OS 및 아키텍처 의존성**: 생성된 실행 파일(`dist/git-llm-wiki` 등)은 빌드된 플랫폼(예: Linux x86_64)에 종속됩니다. 다른 환경(Windows, macOS, ARM 계열 등)에서 사용하려면 해당 OS 환경에서 각각 별도로 빌드해야 합니다.
+1. **OS 및 아키텍처 의존성**: 생성된 실행 파일(`dist/srdocs` 등)은 빌드된 플랫폼(예: Linux x86_64)에 종속됩니다. 다른 환경(Windows, macOS, ARM 계열 등)에서 사용하려면 해당 OS 환경에서 각각 별도로 빌드해야 합니다.
 2. **외부 CLI 명령어 의존성**: 단일 파일 내에 파이썬 인터프리터와 프로그램 소스 코드는 내장되어 컴파일되지만, 시스템의 `git` 명령어, LLM 백엔드 호출을 위한 `claude` CLI 등 외부 프로그램들은 패키징에 포함되지 않습니다. 실행할 호스트 머신에 해당 명령어들이 존재해야 합니다.
 3. **내장 웹 뷰어 실행 (`--serve`)**: `--add-data "web/dist:web/dist"` 플래그를 추가하여 빌드하면 실행 파일 하나만으로도 웹 UI 분석 서버를 실행할 수 있습니다. 별도의 `web/` 폴더를 함께 배포하지 않아도 실행 파일이 임시 디렉토리에 웹 정적 리소스를 해제한 뒤 로컬 서버를 띄워 자동으로 브라우저에 연결해 줍니다.
    ```bash
    # 로컬 8000 포트에서 내장 웹 뷰어 호스팅
-   ./dist/git-llm-wiki --serve
+   ./dist/srdocs --serve
    ```
 
 ---
 
 ## 📂 프로젝트 구조 (Project Structure)
 
-- [core/analyzer.py](file:///home/mypc/projects/llm-test/git-llm-wiki/core/analyzer.py): Git 커밋 로그 파싱 및 파일 구조 스캔
-- [core/generator.py](file:///home/mypc/projects/llm-test/git-llm-wiki/core/generator.py): 통계 산출 및 Markdown 위키 서식 생성
-- [core/cache.py](file:///home/mypc/projects/llm-test/git-llm-wiki/core/cache.py): SHA-256 키 기반 캐싱 및 증분 처리
-- [core/summarizer.py](file:///home/mypc/projects/llm-test/git-llm-wiki/core/summarizer.py): LLM 요약 제어 및 조율
-- [core/llm/](file:///home/mypc/projects/llm-test/git-llm-wiki/core/llm): Gemini/Ollama/Claude API 등 LLM 백엔드 구현
-- [core/cli.py](file:///home/mypc/projects/llm-test/git-llm-wiki/core/cli.py): CLI 서브커맨드 및 흐름 제어
-- [run.py](file:///home/mypc/projects/llm-test/git-llm-wiki/run.py): 프로젝트 실행 스크립트 진입점
-
-
+- [core/analyzer.py](file:///Users/mypc/projects/git-llm-wiki/core/analyzer.py): Git 커밋 로그 파싱 및 파일 구조 스캔
+- [core/generator.py](file:///Users/mypc/projects/git-llm-wiki/core/generator.py): 통계 산출 및 Markdown 위키 서식 생성
+- [core/cache.py](file:///Users/mypc/projects/git-llm-wiki/core/cache.py): SHA-256 키 기반 캐싱 및 증분 처리
+- [core/summarizer.py](file:///Users/mypc/projects/git-llm-wiki/core/summarizer.py): LLM 요약 제어 및 조율
+- [core/llm/](file:///Users/mypc/projects/git-llm-wiki/core/llm): Gemini/Ollama/Claude API 등 LLM 백엔드 구현
+- [core/cli.py](file:///Users/mypc/projects/git-llm-wiki/core/cli.py): CLI 서브커맨드 및 흐름 제어
+- [run.py](file:///Users/mypc/projects/git-llm-wiki/run.py): 프로젝트 실행 스크립트 진입점
