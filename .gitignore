@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# 가상 환경
+.venv/
+venv/
+env/
+
+# 테스트 출력 / 임시 위키 결과물
+*.md.bak
+/wiki/
+/wiki_*/
+WIKI.md
+/vault/
+
+# 도구 캐시 및 설정
+.git_wiki_cache.json
+git_wiki_config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
