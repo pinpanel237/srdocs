@@ -9,8 +9,8 @@ from .summarizer import LLMSummarizer
 from .server import run_server, get_resource_path
 
 # 설정 파일 및 위키 저장을 위한 통합 디렉토리 정의
-VAULT_BASE_DIR = os.path.join(os.path.expanduser("~"), "git-llm-wiki-vault")
-CONFIG_FILE = os.path.join(VAULT_BASE_DIR, "git_wiki_config.json")
+VAULT_BASE_DIR = os.path.join(os.path.expanduser("~"), "srdocs-vault")
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".srdocs")
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -33,9 +33,9 @@ def save_config(config):
 
 def run_wizard():
     print("==================================================")
-    print("🧙 Git Wiki Generator 초기 설정 마법사")
+    print("🧙 srdocs (Git Wiki Generator) 초기 설정 마법사")
     print("==================================================")
-    print("설정 파일(git_wiki_config.json)이 발견되지 않아")
+    print("설정 파일(.srdocs)이 존재하지 않거나 초기화 요청이 있어")
     print("대화형 설정을 시작합니다.")
     print("엔터(Enter)를 누르면 괄호 () 안의 기본값이 적용됩니다.")
     print("자동화 환경(CI/CD)에서는 이 마법사가 실행되지 않습니다.")
@@ -43,38 +43,58 @@ def run_wizard():
     
     config = {}
     
-    # 1. 대상 Git 저장소
-    repo = input("1. 분석할 로컬 Git 저장소 경로 (기본값: .): ").strip()
-    config['repo'] = repo if repo else "."
+    # 1. 대상 Git 저장소 목록 (쉼표 구분)
+    print("\n[1] 로컬 Git 저장소 경로 목록")
+    print("    - 위키 문서를 생성하기 위해 분석할 로컬 Git 저장소들의 최상위 폴더 경로입니다.")
+    print("    - 여러 프로젝트를 한 번에 빌드하고 싶다면 경로를 쉼표(,)로 구분해 입력해 주세요.")
+    repos_input = input("    저장소 경로 목록 (기본값: 현재 폴더 .): ").strip()
+    if repos_input:
+        config['repos'] = [r.strip() for r in repos_input.split(",") if r.strip()]
+    else:
+        config['repos'] = ["."]
     
     # 2. 저장 경로
     default_output = "DEFAULT"
-    print(f"2. 위키 문서 저장 경로 (기본값: {os.path.join(VAULT_BASE_DIR, '<project_name>')})")
-    output = input("   원하는 경로 입력 (엔터 입력 시 기본값 적용): ").strip()
+    print("\n[2] 위키 문서 저장 경로")
+    print(f"    - 생성된 위키 폴더/파일이 저장될 위치입니다.")
+    print(f"    - 기본값인 'DEFAULT'를 사용할 경우, 홈 디렉토리 하위의")
+    print(f"      '{os.path.join(VAULT_BASE_DIR, '<project_name>')}' 경로에 각각 분할되어 생성됩니다.")
+    output = input("    원하는 경로 입력 (엔터 입력 시 기본값 DEFAULT 적용): ").strip()
     config['output'] = output if output else default_output
     
     # 3. 링크 타입
-    link_type = input("3. 위키 문서 내 링크 형식 (abs: 절대경로, rel: 상대경로) (기본값: abs): ").strip()
+    print("\n[3] 위키 문서 내 파일 링크 형식")
+    print("    - 위키에서 소스 코드로 바로가기 할 때 생성되는 하이퍼링크의 형식입니다.")
+    print("    - abs: 로컬 개발 환경용 절대 경로 바로가기 링크 (file://...)")
+    print("    - rel: Obsidian Vault 등 로컬 개인 위키 연동을 위한 상대 경로 링크")
+    link_type = input("    형식 입력 (abs / rel) (기본값: abs): ").strip()
     config['link_type'] = link_type if link_type in ['abs', 'rel'] else "abs"
     
     # 4. LLM 백엔드
-    llm = input("4. LLM 요약 백엔드 (none, gemini, ollama, claude) (기본값: none): ").strip()
+    print("\n[4] LLM 요약 백엔드 선택")
+    print("    - 소스 코드 핵심 요약 및 커밋 로그 릴리즈 노트를 생성할 AI 모델 서비스입니다.")
+    print("    - none: AI 요약 분석을 건너뛰고 기본 통계 및 아키텍처 다이어그램만 빠르게 빌드합니다.")
+    print("    - gemini / ollama / claude: 각각 해당 LLM 서비스를 연동해 세부 요약을 생성합니다.")
+    llm = input("    백엔드 선택 (none, gemini, ollama, claude) (기본값: none): ").strip()
     config['llm'] = llm if llm in ['gemini', 'ollama', 'claude', 'none'] else "none"
     
     if config['llm'] == 'gemini':
-        api_key = input("  - Gemini API 키 (환경변수 GEMINI_API_KEY가 있다면 건너뛰기 가능): ").strip()
+        print("\n    - Gemini API 설정")
+        api_key = input("      * Gemini API 인증 키 (환경변수 GEMINI_API_KEY가 있다면 생략 가능): ").strip()
         if api_key:
             config['api_key'] = api_key
-        model = input("  - 사용할 Gemini 모델명 (기본값: gemini-1.5-flash): ").strip()
+        model = input("      * 사용할 모델명 (기본값: gemini-1.5-flash): ").strip()
         config['model'] = model if model else "gemini-1.5-flash"
     elif config['llm'] == 'ollama':
-        model = input("  - 사용할 Ollama 모델명 (기본값: gemma4:e4b): ").strip()
+        print("\n    - Ollama API 설정")
+        model = input("      * 사용할 Ollama 로컬 모델명 (기본값: gemma4:e4b): ").strip()
         config['model'] = model if model else "gemma4:e4b"
-        api_url = input("  - Ollama API 주소 (기본값: http://localhost:11434/api/generate): ").strip()
+        api_url = input("      * Ollama API 주소 (기본값: http://localhost:11434/api/generate): ").strip()
         if api_url:
             config['api_url'] = api_url
     elif config['llm'] == 'claude':
-        model = input("  - 사용할 Claude 모델명 (기본값: claude-sonnet-4-6): ").strip()
+        print("\n    - Claude API 설정")
+        model = input("      * 사용할 Claude 모델명 (기본값: claude-sonnet-4-6): ").strip()
         config['model'] = model if model else "claude-sonnet-4-6"
 
     save_config(config)
@@ -96,12 +116,12 @@ def main():
     parser.add_argument(
         "--init",
         action="store_true",
-        help="대화형 설정 마법사를 실행하여 git_wiki_config.json 파일을 생성합니다."
+        help="대화형 설정 마법사를 실행하여 .srdocs 파일을 생성합니다."
     )
     parser.add_argument(
         "--repo",
-        default=config.get("repo", "."),
-        help="분석할 로컬 Git 저장소 경로 (기본값: .)"
+        default=None,
+        help="분석할 로컬 Git 저장소 경로 (기본값: .srdocs 내의 repos 목록)"
     )
     default_output = "DEFAULT"
     parser.add_argument(
@@ -176,41 +196,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Git 저장소 최상위 경로(Toplevel) 자동 교정 (dist 폴더 실행 등 대응)
-    repo_path = os.path.abspath(args.repo)
-    import subprocess
-    try:
-        if os.path.isdir(repo_path):
-            res = subprocess.run(
-                ["git", "rev-parse", "--show-toplevel"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            git_toplevel = res.stdout.strip()
-            if git_toplevel and os.path.isdir(git_toplevel):
-                repo_path = git_toplevel
-    except Exception:
-        pass
-        
-    if not os.path.isdir(repo_path):
-        print(f"오류: 지정한 경로가 디렉토리가 아닙니다: {repo_path}")
-        sys.exit(1)
-    
+    # 웹 서버 구동은 분석 대상 루프를 돌기 전에 단 한 번만 실행합니다.
     if args.serve:
-        wiki_dir = args.output
-        if wiki_dir == "DEFAULT":
-            repo_name = os.path.basename(repo_path)
-            wiki_dir = os.path.join(VAULT_BASE_DIR, repo_name)
-        if wiki_dir.endswith('.md'):
-            wiki_dir = 'wiki'
-            
-        # 웹 뷰어가 다중 프로젝트 목록 및 메타데이터를 올바르게 가져올 수 있도록
-        # 개별 위키 디렉토리가 아닌 부모 디렉토리를 웹 서버의 vault 루트로 전달합니다.
-        vault_root = os.path.dirname(os.path.abspath(wiki_dir))
         web_dist_dir = get_resource_path("web/dist")
-        run_server(vault_root, web_dist_dir, port=args.port)
+        print(f"📡 웹 뷰어 서버 구동 중: {VAULT_BASE_DIR} 포트: {args.port}")
+        run_server(VAULT_BASE_DIR, web_dist_dir, port=args.port)
         sys.exit(0)
         
     # 하위 호환성: --ollama-url이 주어지면 --api-url로 사용
@@ -218,170 +208,206 @@ def main():
     if args.ollama_url and not args.api_url:
         api_url = args.ollama_url
         
-    if args.lint:
-        wiki_dir = args.output
-        if wiki_dir == "DEFAULT":
-            repo_name = os.path.basename(repo_path)
-            wiki_dir = os.path.join(VAULT_BASE_DIR, repo_name)
-        if wiki_dir.endswith('.md'):
-            wiki_dir = 'wiki'
-        run_lint(repo_path, wiki_dir)
-        sys.exit(0)
-        
-    if args.query:
-        wiki_dir = args.output
-        if wiki_dir == "DEFAULT":
-            repo_name = os.path.basename(repo_path)
-            wiki_dir = os.path.join(VAULT_BASE_DIR, repo_name)
-        if wiki_dir.endswith('.md'):
-            wiki_dir = 'wiki'
-        run_query(repo_path, wiki_dir, args.query, args.llm, args.api_key, args.model, api_url)
-        sys.exit(0)
-        
-    analyzer = GitAnalyzer(repo_path)
-    if not analyzer.check_is_repo():
-        print(f"오류: 지정한 경로가 Git 저장소가 아닙니다: {repo_path}")
-        sys.exit(1)
-        
-    print(f"🔍 저장소 분석 시작: {repo_path}")
-    
-    # Analyze
-    metadata = analyzer.get_repo_metadata()
-    print(f"   - 프로젝트 이름: {metadata['name']}")
-    print(f"   - 프로젝트 타입: {metadata['type']}")
-    
-    print("📂 파일 스캔 중...")
-    files, ext_counts = analyzer.scan_files()
-    print(f"   - 총 스캔 파일: {len(files)} 개")
-    
-    print("🔨 Git 커밋 로그 수집 중...")
-    commits = analyzer.get_git_log(limit=args.limit)
-    print(f"   - 수집된 커밋: {len(commits)} 개")
-    
-    # Initialize cache
-    from .cache import WikiCache
-    cache = WikiCache(repo_path)
-    
-    # Group commits by tags or Year-Month if no tags exist
-    tag_indices = []
-    for idx, c in enumerate(commits):
-        if c['tag']:
-            tag_indices.append((idx, c['tag']))
-    tag_indices_desc = sorted(tag_indices, key=lambda x: x[0], reverse=True)
-    
-    grouped_commits = defaultdict(list)
-    if len(tag_indices) > 0:
-        for idx, c in enumerate(commits):
-            version = None
-            for tag_idx, tag_name in tag_indices_desc:
-                if tag_idx <= idx:
-                    version = tag_name
-                    break
-            if version is None:
-                version = "unreleased"
-            grouped_commits[version].append(c)
+    # 대상 저장소 리스트 결정
+    if args.repo:
+        repos_config = [args.repo]
     else:
-        for c in commits:
-            ym = c['date'][:7] if len(c['date']) >= 7 else "unreleased"
-            grouped_commits[ym].append(c)
-
-    # Load cached summaries first (allows reuse even without LLM option)
-    llm_summaries = {}
+        repos_config = config.get("repos")
+        if not repos_config:
+            # 하위 호환성 (단일 repo 키만 존재 시)
+            old_repo = config.get("repo")
+            repos_config = [old_repo] if old_repo else ["."]
+        elif isinstance(repos_config, str):
+            repos_config = [repos_config]
+            
+    print(f"📋 총 {len(repos_config)}개의 저장소를 차례대로 빌드합니다.")
     
-    current_overview_key = cache.calculate_overview_key(metadata, files)
-    cached_overview = cache.get_overview(current_overview_key)
-    if cached_overview:
-        llm_summaries['overview'] = cached_overview
-        print("   - 프로젝트 개요 요약: 캐시 사용")
+    for repo_path_raw in repos_config:
+        repo_path = os.path.abspath(repo_path_raw)
         
-    for version, comms in grouped_commits.items():
-        rel_key = cache.calculate_release_key(version, comms)
-        cached_rel = cache.get_release_summary(rel_key)
-        if cached_rel:
-            llm_summaries[version] = cached_rel
-            print(f"   - 버전 {version} 요약: 캐시 사용")
-
-    # LLM summaries generation for missing/outdated cache
-    if args.llm != "none":
-        print(f"🤖 LLM 요약 진행 중 ({args.llm} 백엔드)...")
-        
-        # 공통 백엔드 파라미터
-        backend_kwargs = {}
-        if args.llm == "gemini":
-            if not args.api_key:
-                print("경고: Gemini API 키가 제공되지 않아 LLM 요약을 건너뜁니다.")
-                backend_kwargs = None
+        # Git 저장소 최상위 경로(Toplevel) 자동 교정 (dist 폴더 실행 등 대응)
+        import subprocess
+        try:
+            if os.path.isdir(repo_path):
+                res = subprocess.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                git_toplevel = res.stdout.strip()
+                if git_toplevel and os.path.isdir(git_toplevel):
+                    repo_path = git_toplevel
+        except Exception:
+            pass
+            
+        if not os.path.isdir(repo_path):
+            print(f"⚠️ 경고: 지정한 경로가 디렉토리가 아닙니다. 건너뜁니다: {repo_path}")
+            continue
+            
+        # 각 저장소별 개별 위키 출력 경로 설정
+        repo_name = os.path.basename(repo_path)
+        output_path = args.output
+        if output_path == "DEFAULT":
+            project_output_path = os.path.join(VAULT_BASE_DIR, repo_name)
+        else:
+            if output_path.endswith('.md'):
+                dir_part, file_part = os.path.split(output_path)
+                project_output_path = os.path.join(dir_part, f"{repo_name}_{file_part}")
             else:
+                project_output_path = os.path.join(output_path, repo_name)
+                
+        # 린트 모드
+        if args.lint:
+            run_lint(repo_path, project_output_path)
+            continue
+            
+        # 자연어 질의 모드
+        if args.query:
+            run_query(repo_path, project_output_path, args.query, args.llm, args.api_key, args.model, api_url)
+            continue
+            
+        # 메인 분석 및 생성
+        analyzer = GitAnalyzer(repo_path)
+        if not analyzer.check_is_repo():
+            print(f"⚠️ 경고: 지정한 경로가 Git 저장소가 아닙니다. 건너뜁니다: {repo_path}")
+            continue
+            
+        print(f"\n🔍 저장소 분석 시작: {repo_path}")
+        
+        # Analyze
+        metadata = analyzer.get_repo_metadata()
+        print(f"   - 프로젝트 이름: {metadata['name']}")
+        print(f"   - 프로젝트 타입: {metadata['type']}")
+        
+        print("📂 파일 스캔 중...")
+        files, ext_counts = analyzer.scan_files()
+        print(f"   - 총 스캔 파일: {len(files)} 개")
+        
+        print("🔨 Git 커밋 로그 수집 중...")
+        commits = analyzer.get_git_log(limit=args.limit)
+        print(f"   - 수집된 커밋: {len(commits)} 개")
+        
+        # Initialize cache
+        from .cache import WikiCache
+        cache = WikiCache(repo_path)
+        
+        # Group commits by tags or Year-Month if no tags exist
+        tag_indices = []
+        for idx, c in enumerate(commits):
+            if c['tag']:
+                tag_indices.append((idx, c['tag']))
+        tag_indices_desc = sorted(tag_indices, key=lambda x: x[0], reverse=True)
+        
+        grouped_commits = defaultdict(list)
+        if len(tag_indices) > 0:
+            for idx, c in enumerate(commits):
+                version = None
+                for tag_idx, tag_name in tag_indices_desc:
+                    if tag_idx <= idx:
+                        version = tag_name
+                        break
+                if version is None:
+                    version = "unreleased"
+                grouped_commits[version].append(c)
+        else:
+            for c in commits:
+                ym = c['date'][:7] if len(c['date']) >= 7 else "unreleased"
+                grouped_commits[ym].append(c)
+    
+        # Load cached summaries first (allows reuse even without LLM option)
+        llm_summaries = {}
+        
+        current_overview_key = cache.calculate_overview_key(metadata, files)
+        cached_overview = cache.get_overview(current_overview_key)
+        if cached_overview:
+            llm_summaries['overview'] = cached_overview
+            print("   - 프로젝트 개요 요약: 캐시 사용")
+            
+        for version, comms in grouped_commits.items():
+            rel_key = cache.calculate_release_key(version, comms)
+            cached_rel = cache.get_release_summary(rel_key)
+            if cached_rel:
+                llm_summaries[version] = cached_rel
+                print(f"   - 버전 {version} 요약: 캐시 사용")
+    
+        # LLM summaries generation for missing/outdated cache
+        if args.llm != "none":
+            print(f"🤖 LLM 요약 진행 중 ({args.llm} 백엔드)...")
+            
+            # 공통 백엔드 파라미터
+            backend_kwargs = {}
+            if args.llm == "gemini":
+                if not args.api_key:
+                    print("경고: Gemini API 키가 제공되지 않아 LLM 요약을 건너뜁니다.")
+                    backend_kwargs = None
+                else:
+                    backend_kwargs = {
+                        "api_key": args.api_key,
+                        "model": args.model,
+                        "api_url": api_url
+                    }
+            elif args.llm == "ollama":
                 backend_kwargs = {
-                    "api_key": args.api_key,
                     "model": args.model,
                     "api_url": api_url
                 }
-        elif args.llm == "ollama":
-            backend_kwargs = {
-                "model": args.model,
-                "api_url": api_url
-            }
-        elif args.llm == "claude":
-            backend_kwargs = {
-                "model": args.model
-            }
-        
-        if backend_kwargs is not None:
-            summarizer = LLMSummarizer(backend=args.llm, repo_path=repo_path, **backend_kwargs)
-            # Check overview
-            if not llm_summaries.get('overview'):
-                print("   - 프로젝트 개요 요약 생성 중...")
-                overview = summarizer.summarize_overview(metadata, files)
-                if overview:
-                    llm_summaries['overview'] = overview
-                    cache.set_overview(current_overview_key, overview)
-                    cache.save()
-                    
-            # Check releases
-            print("   - 버전별 릴리즈 내용 요약 생성 중...")
-            for version, comms in grouped_commits.items():
-                rel_key = cache.calculate_release_key(version, comms)
-                if not llm_summaries.get(version):
-                    print(f"     * 버전 {version} 요약 생성 중...")
-                    rel_summary = summarizer.summarize_release(version, comms)
-                    if rel_summary:
-                        llm_summaries[version] = rel_summary
-                        cache.set_release_summary(rel_key, rel_summary)
+            elif args.llm == "claude":
+                backend_kwargs = {
+                    "model": args.model
+                }
+            
+            if backend_kwargs is not None:
+                summarizer = LLMSummarizer(backend=args.llm, repo_path=repo_path, **backend_kwargs)
+                # Check overview
+                if not llm_summaries.get('overview'):
+                    print("   - 프로젝트 개요 요약 생성 중...")
+                    overview = summarizer.summarize_overview(metadata, files)
+                    if overview:
+                        llm_summaries['overview'] = overview
+                        cache.set_overview(current_overview_key, overview)
                         cache.save()
-                    
-    # Generate
-    output_path = args.output
-    if output_path == "DEFAULT":
-        output_path = os.path.join(VAULT_BASE_DIR, metadata['name'])
-    generator = WikiGenerator(
-        metadata=metadata,
-        files=files,
-        ext_counts=ext_counts,
-        commits=commits,
-        repo_path=repo_path,
-        link_type=args.link_type
-    )
-    generator.max_tree_depth = args.tree_depth
-    
-    if output_path.endswith('.md'):
-        print("📝 단일 마크다운 위키 파일 작성 중...")
-        wiki_content = generator.generate(llm_summary=llm_summaries if llm_summaries else None)
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(wiki_content)
-            print(f"🎉 단일 위키 생성이 완료되었습니다! 저장된 경로: {os.path.abspath(output_path)}")
-        except Exception as e:
-            print(f"오류: 위키 파일을 저장하지 못했습니다: {e}")
-            sys.exit(1)
-    else:
-        print(f"📂 폴더 구조 개발 위키 작성 중... 디렉토리: {output_path}")
-        try:
-            generator.generate_directory(output_path, llm_summary=llm_summaries if llm_summaries else None)
-            print(f"🎉 개발 위키 디렉토리가 성공적으로 구축되었습니다! 저장된 경로: {os.path.abspath(output_path)}")
-        except Exception as e:
-            print(f"오류: 위키 디렉토리를 구축하지 못했습니다: {e}")
-            sys.exit(1)
+                        
+                # Check releases
+                print("   - 버전별 릴리즈 내용 요약 생성 중...")
+                for version, comms in grouped_commits.items():
+                    rel_key = cache.calculate_release_key(version, comms)
+                    if not llm_summaries.get(version):
+                        print(f"     * 버전 {version} 요약 생성 중...")
+                        rel_summary = summarizer.summarize_release(version, comms)
+                        if rel_summary:
+                            llm_summaries[version] = rel_summary
+                            cache.set_release_summary(rel_key, rel_summary)
+                            cache.save()
+                        
+        # Generate
+        generator = WikiGenerator(
+            metadata=metadata,
+            files=files,
+            ext_counts=ext_counts,
+            commits=commits,
+            repo_path=repo_path,
+            link_type=args.link_type
+        )
+        generator.max_tree_depth = args.tree_depth
+        
+        if project_output_path.endswith('.md'):
+            print("📝 단일 마크다운 위키 파일 작성 중...")
+            wiki_content = generator.generate(llm_summary=llm_summaries if llm_summaries else None)
+            try:
+                with open(project_output_path, 'w', encoding='utf-8') as f:
+                    f.write(wiki_content)
+                print(f"🎉 단일 위키 생성이 완료되었습니다! 저장된 경로: {os.path.abspath(project_output_path)}")
+            except Exception as e:
+                print(f"오류: 위키 파일을 저장하지 못했습니다: {e}")
+        else:
+            print(f"📂 폴더 구조 개발 위키 작성 중... 디렉토리: {project_output_path}")
+            try:
+                generator.generate_directory(project_output_path, llm_summary=llm_summaries if llm_summaries else None)
+                print(f"🎉 개발 위키 디렉토리가 성공적으로 구축되었습니다! 저장된 경로: {os.path.abspath(project_output_path)}")
+            except Exception as e:
+                print(f"오류: 위키 디렉토리를 구축하지 못했습니다: {e}")
 
 def run_lint(repo_path, wiki_dir):
     import re
