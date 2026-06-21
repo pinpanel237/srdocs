@@ -3,14 +3,13 @@ import os
 import sys
 import json
 from collections import defaultdict
-from .analyzer import GitAnalyzer
-from .generator import WikiGenerator
-from .summarizer import LLMSummarizer
-from web.backend.server import run_server, get_resource_path
 
 # 설정 파일 및 위키 저장을 위한 통합 디렉토리 정의
 VAULT_BASE_DIR = os.path.join(os.path.expanduser("~"), "srdocs-vault")
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".srdocs")
+
+# 설정 파일 저장 경로 정의 (~/.srdocs/config.json)
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".srdocs")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -35,7 +34,7 @@ def run_wizard():
     print("==================================================")
     print("🧙 srdocs (Git Wiki Generator) 초기 설정 마법사")
     print("==================================================")
-    print("설정 파일(.srdocs)이 존재하지 않거나 초기화 요청이 있어")
+    print("설정 파일(.srdocs/config.json)이 존재하지 않거나 초기화 요청이 있어")
     print("대화형 설정을 시작합니다.")
     print("엔터(Enter)를 누르면 괄호 () 안의 기본값이 적용됩니다.")
     print("자동화 환경(CI/CD)에서는 이 마법사가 실행되지 않습니다.")
@@ -116,12 +115,12 @@ def main():
     parser.add_argument(
         "--init",
         action="store_true",
-        help="대화형 설정 마법사를 실행하여 .srdocs 파일을 생성합니다."
+        help="대화형 설정 마법사를 실행하여 .srdocs/config.json 파일을 생성합니다."
     )
     parser.add_argument(
         "--repo",
         default=None,
-        help="분석할 로컬 Git 저장소 경로 (기본값: .srdocs 내의 repos 목록)"
+        help="분석할 로컬 Git 저장소 경로 (기본값: .srdocs/config.json 내의 repos 목록)"
     )
     default_output = "DEFAULT"
     parser.add_argument(
@@ -198,6 +197,7 @@ def main():
     
     # 웹 서버 구동은 분석 대상 루프를 돌기 전에 단 한 번만 실행합니다.
     if args.serve:
+        from web.backend.server import run_server, get_resource_path
         web_dist_dir = get_resource_path("web/frontend/dist")
         print(f"📡 웹 뷰어 서버 구동 중: {VAULT_BASE_DIR} 포트: {args.port}")
         run_server(VAULT_BASE_DIR, web_dist_dir, port=args.port)
@@ -269,6 +269,7 @@ def main():
             continue
             
         # 메인 분석 및 생성
+        from .analyzer import GitAnalyzer
         analyzer = GitAnalyzer(repo_path)
         if not analyzer.check_is_repo():
             print(f"⚠️ 경고: 지정한 경로가 Git 저장소가 아닙니다. 건너뜁니다: {repo_path}")
@@ -359,6 +360,7 @@ def main():
                 }
             
             if backend_kwargs is not None:
+                from .summarizer import LLMSummarizer
                 summarizer = LLMSummarizer(backend=args.llm, repo_path=repo_path, **backend_kwargs)
                 # Check overview
                 if not llm_summaries.get('overview'):
@@ -382,6 +384,7 @@ def main():
                             cache.save()
                         
         # Generate
+        from .generator import WikiGenerator
         generator = WikiGenerator(
             metadata=metadata,
             files=files,
@@ -475,6 +478,7 @@ def run_query(repo_path, wiki_dir, query_str, llm_backend, api_key, model, api_u
         sys.exit(1)
         
     print(f"🔍 Wiki 자연어 질의 시작: '{query_str}'")
+    from .analyzer import GitAnalyzer
     analyzer = GitAnalyzer(repo_path)
     metadata = analyzer.get_repo_metadata()
     
@@ -489,6 +493,7 @@ def run_query(repo_path, wiki_dir, query_str, llm_backend, api_key, model, api_u
     print(f"   - 검색된 관련 파일: {len(context_results)} 개")
     
     print(f"🤖 LLM 답변 생성 중 ({llm_backend} 백엔드)...")
+    from .summarizer import LLMSummarizer
     summarizer = LLMSummarizer(backend=llm_backend, api_key=api_key, model=model, api_url=api_url, repo_path=repo_path)
     answer = summarizer.answer_query(query_str, metadata, context_results)
     
@@ -534,6 +539,7 @@ def run_query(repo_path, wiki_dir, query_str, llm_backend, api_key, model, api_u
     files, ext_counts = analyzer.scan_files()
     commits = analyzer.get_git_log(limit=500)
     
+    from .generator import WikiGenerator
     generator = WikiGenerator(
         metadata=metadata,
         files=files,

@@ -105,8 +105,8 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 
 ### 주요 동작 특성
 
-#### 설정 파일 관리 (`~/.git_wiki_config.json`)
-* CLI 실행 시 `~/.git_wiki_config.json`을 로드하여 `argparse` 파서의 기본값(default)으로 매핑합니다.
+#### 설정 파일 관리 (`~/.srdocs/config.json`)
+* CLI 실행 시 `~/.srdocs/config.json`을 로드하여 `argparse` 파서의 기본값(default)으로 매핑합니다.
 * 사용자가 터미널에서 옵션 없이 실행했는데 설정이 없다면 대화형 마법사(`run_wizard`)가 실행되나, CI/CD 등 TTY(대화형 입력 가능 터미널)가 없는 환경에서는 마법사가 생략되고 기존 내장 기본값으로 논스톱 실행됩니다.
 * 이 설정 파일에는 API Key 및 로컬 전용 절대경로가 포함되므로 홈 디렉토리에 생성되어 Git 추적에서 원천 차단됩니다.
 
@@ -150,7 +150,7 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 
 4. **출력 모드 불일치:** 린팅과 쿼리는 디렉토리 Vault에서만 작동합니다. `.md` 파일로 지정하면 도구가 자동으로 `wiki` 폴더로 변환합니다 (`cli.py` 91, 98줄).
 
-5. **설정 마법사 및 자동화(CI/CD) 주의점:** `~/.git_wiki_config.json`이 로컬에 이미 구성되어 있어도, CI/CD 환경이나 다른 컴퓨터에 배포 시에는 CLI 인자를 명시적으로 제공하여 작동하게 설정해야 합니다. (CI/CD 환경에서는 마법사 입력 대기가 자동으로 스킵되므로 CLI 인자가 필수적입니다.)
+5. **설정 마법사 및 자동화(CI/CD) 주의점:** `~/.srdocs/config.json`이 로컬에 이미 구성되어 있어도, CI/CD 환경이나 다른 컴퓨터에 배포 시에는 CLI 인자를 명시적으로 제공하여 작동하게 설정해야 합니다. (CI/CD 환경에서는 마법사 입력 대기가 자동으로 스킵되므로 CLI 인자가 필수적입니다.)
 
 ### 모듈별 역할
 

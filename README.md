@@ -11,7 +11,7 @@ A Python-based CLI tool that analyzes the file structure and Git commit history 
 - **순수 표준 라이브러리 사용 (Zero Dependencies)**: 외부 라이브러리 설치 필요 없이 Python 3만 있으면 즉시 실행 가능합니다.
 - **초기 대화형 설정 마법사 및 설정 파일 지원 (Wizard & Configuration)**:
   - 첫 실행 시 대화형 설정 마법사(`run_wizard`)가 실행되어 여러 저장소 경로 목록, 문서 저장 폴더, LLM 연동 정보 등을 입력받습니다.
-  - 입력값은 홈 디렉토리의 `.srdocs` 파일에 저장되어 이후 실행의 기본값으로 적용되며, 자동화(CI/CD) 환경에서는 멈추지 않고 생략됩니다.
+  - 입력값은 홈 디렉토리의 `.srdocs/config.json` 파일에 저장되어 이후 실행의 기본값으로 적용되며, 자동화(CI/CD) 환경에서는 멈추지 않고 생략됩니다.
 - **로컬 캐싱 및 증분 분석 (Caching & Token Saving)**: 
   - 릴리즈 태그와 파일 목록의 SHA-256 해시 키를 기준으로 이미 분석된 버전/프로젝트 요약을 로컬 캐시(사용자 홈 디렉토리의 `~/.cache/git-llm-wiki/`)에 저장합니다.
   - 다음 실행 시 캐시된 요약을 로드하여 중복 LLM 호출과 토큰 소모를 방지합니다.
@@ -68,7 +68,7 @@ A Python-based CLI tool that analyzes the file structure and Git commit history 
 ## 🚀 빠른 시작 (Quick Start)
 
 ### 0. 초기 대화형 설정 구성
-프로젝트를 처음 구동할 때 아래 명령을 실행하면 저장소 경로 목록, 위키 저장 경로(기본값: `srdocs-vault`), LLM 설정을 입력받아 구성 파일(`.srdocs`)을 생성합니다.
+프로젝트를 처음 구동할 때 아래 명령을 실행하면 저장소 경로 목록, 위키 저장 경로(기본값: `srdocs-vault`), LLM 설정을 입력받아 구성 파일(`.srdocs/config.json`)을 생성합니다.
 ```bash
 srdocs --init
 ```
@@ -117,11 +117,11 @@ srdocs --serve --output wiki_vault --port 9000
 
 | 옵션 | 설명 | 기본값 |
 |---|---|---|
-| `--init` | 대화형 설정 마법사를 실행하여 `.srdocs`을 생성 | False (store_true) |
-| `--repo` | 분석 대상 로컬 Git 저장소 경로 | `.srdocs` 설정 내의 repos 목록 또는 `.` |
-| `--output` | 생성할 위키 파일 경로(.md) 또는 위키 폴더 경로 | `.srdocs` 설정값 또는 `srdocs-vault` |
-| `--link-type` | 위키 내부 파일 바로가기 형식 (`abs`: 절대 경로 `file://` 링크, `rel`: 상대 경로 링크) | `.srdocs` 설정값 또는 `abs` |
-| `--llm` | LLM 요약 백엔드 (`gemini` / `ollama` / `claude` / `none`) | `.srdocs` 설정값 또는 `none` |
+| `--init` | 대화형 설정 마법사를 실행하여 `.srdocs/config.json`을 생성 | False (store_true) |
+| `--repo` | 분석 대상 로컬 Git 저장소 경로 | `.srdocs/config.json` 설정 내의 repos 목록 또는 `.` |
+| `--output` | 생성할 위키 파일 경로(.md) 또는 위키 폴더 경로 | `.srdocs/config.json` 설정값 또는 `srdocs-vault` |
+| `--link-type` | 위키 내부 파일 바로가기 형식 (`abs`: 절대 경로 `file://` 링크, `rel`: 상대 경로 링크) | `.srdocs/config.json` 설정값 또는 `abs` |
+| `--llm` | LLM 요약 백엔드 (`gemini` / `ollama` / `claude` / `none`) | `.srdocs/config.json` 설정값 또는 `none` |
 | `--api-key` | Gemini API 인증 키 (미지정 시 환경변수 및 설정값 참조) | 설정값 또는 `GEMINI_API_KEY` |
 | `--model` | LLM 모델명 | 설정값 또는 백엔드별 기본 모델 |
 | `--api-url` | LLM API 주소 (Ollama, 기타 REST API 등) | 설정값 또는 None |
