@@ -32,7 +32,7 @@ def save_config(config):
 
 def run_wizard():
     print("==================================================")
-    print("🧙 srdocs (Git Wiki Generator) 초기 설정 마법사")
+    print("🧙 srdocs (md Wiki Generator) 초기 설정 마법사")
     print("==================================================")
     print("설정 파일(.srdocs/config.json)이 존재하지 않거나 초기화 요청이 있어")
     print("대화형 설정을 시작합니다.")

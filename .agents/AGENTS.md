@@ -19,7 +19,7 @@ python3 run.py --init
 
 **실행:**
 ```bash
-# 기본: 설정 파일에 따른 위키 생성 (기본값: ~/vault-git-llm-wiki 디렉토리 구조 위키 생성)
+# 기본: 설정 파일에 따른 위키 생성 (기본값: ~/srdocs-vault 디렉토리 구조 위키 생성)
 python3 run.py
 
 # CLI 인자 직접 지정: 단일 마크다운 위키 생성
@@ -34,7 +34,7 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 
 1. **`GitAnalyzer`** (`core/analyzer.py`) — `git log --numstat` 실행, 커밋+파일 파싱, 워크트리 스캔 (`.gitignore` 준수), 매니페스트 파일로 프로젝트 타입 감지
 
-2. **`WikiCache`** (`core/cache.py`) — 사용자 홈 디렉토리의 캐시 폴더(`~/.cache/git-llm-wiki/`)에 저장소 절대 경로 해시 기반의 JSON 파일로 저장되는 로컬 캐시. 개요 키 = 파일 메타데이터 해시, 릴리즈 키 = 커밋 해시 조합. LLM 호출 **이전에** 캐시를 먼저 확인 (중복 생성 방지)
+2. **`WikiCache`** (`core/cache.py`) — 사용자 홈 디렉토리의 캐시 폴더(`~/.cache/srdocs/`)에 저장소 절대 경로 해시 기반의 JSON 파일로 저장되는 로컬 캐시. 개요 키 = 파일 메타데이터 해시, 릴리즈 키 = 커밋 해시 조합. LLM 호출 **이전에** 캐시를 먼저 확인 (중복 생성 방지)
 
 3. **`LLMSummarizer`** (`core/summarizer.py` + `core/llm/`) — 세 가지 백엔드:
    - `gemini`, `ollama` → `urllib.request`로 REST API 호출
@@ -58,7 +58,7 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 * **사용 시나리오**: 로컬 개발자 문서 확인, 온프레미스 수동 빌드 배포, 소규모 프로젝트.
 * **실행 예시**:
   ```bash
-  python3 run.py --repo /path/to/my-project --output ~/vault-git-llm-wiki
+  python3 run.py --repo /path/to/my-project --output ~/srdocs-vault
   ```
 
 #### 2. 자동 모드 (Auto Mode) - [로드맵 / 개발 계획 단계]
@@ -99,7 +99,7 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 
 **로컬 개발 확인 방법:**
 * Vite 개발 서버(`npm run dev`)는 `web/`을 루트로 띄우므로, `web/public/vault` 경로에 위키 데이터가 존재해야 합니다.
-* 일일이 복사할 필요 없이 심볼릭 링크(`ln -s ~/vault-git-llm-wiki web/public/vault` 형태 등)를 활용하여 연동할 수 있습니다.
+* 일일이 복사할 필요 없이 심볼릭 링크(`ln -s ~/srdocs-vault web/public/vault` 형태 등)를 활용하여 연동할 수 있습니다.
 
 ---
 
@@ -141,7 +141,7 @@ python3 run.py --repo /path/to/git-repo --output WIKI.md
 
 1. **유효하지 않은 저장소로 실행:** `--repo` 경로가 Git 디렉토리인지 확인하세요. 도구는 초기에 `check_is_repo()`로 확인하고 오류 시 종료합니다.
 
-2. **캐시 무효화 무시:** 출력 생성을 작업할 때, 캐시 파일은 실제 개발 코드가 있는 프로젝트 폴더가 아닌 사용자 홈 디렉토리의 캐시 폴더(`~/.cache/git-llm-wiki/`)에 저장소 별로 구분되어 저장됩니다. 캐시를 완전히 비우려면 해당 폴더의 JSON 캐시 파일들을 삭제하세요.
+2. **캐시 무효화 무시:** 출력 생성을 작업할 때, 캐시 파일은 실제 개발 코드가 있는 프로젝트 폴더가 아닌 사용자 홈 디렉토리의 캐시 폴더(`~/.cache/srdocs/`)에 저장소 별로 구분되어 저장됩니다. 캐시를 완전히 비우려면 해당 폴더의 JSON 캐시 파일들을 삭제하세요.
 
 3. **LLM 백엔드 설정:** 
    - `--llm gemini` → `GEMINI_API_KEY` 환경변수 또는 `--api-key` 플래그 필요
@@ -194,10 +194,10 @@ curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 
 # 2. PyInstaller 설치 및 웹 뷰어 리소스를 포함한 단일 파일 빌드
 ./venv/bin/pip install pyinstaller
-./venv/bin/pyinstaller --onefile --name git-llm-wiki --add-data "web/dist:web/dist" run.py
+./venv/bin/pyinstaller --onefile --name srdocs --add-data "web/frontend/dist:web/frontend/dist" run.py
 
-# 3. 임시 빌드 환경 정리 (빌드 결과물은 dist/git-llm-wiki 에 생성됨)
-rm -rf venv build git-llm-wiki.spec
+# 3. 임시 빌드 환경 정리 (빌드 결과물은 dist/srdocs 에 생성됨)
+rm -rf venv build srdocs.spec
 ```
 
 #### 바이너리 배포 및 실행 시 주의점
@@ -205,7 +205,7 @@ rm -rf venv build git-llm-wiki.spec
 2. **외부 CLI 명령어 의존성**: 빌드된 실행 파일 내에 파이썬 인터프리터와 소스 코드는 내장되어 있으나, 시스템의 `git` 명령어, LLM 호출을 위한 `claude` CLI 등 외부 프로그램은 패키징에 포함되지 않습니다. 바이너리를 실행하는 호스트 시스템에 해당 프로그램들이 설치되어 있는지 확인해야 합니다.
 3. **내장 웹 뷰어 서버 구동 (`--serve`)**: `--add-data` 플래그로 내장된 리액트 정적 리소스들은 실행 시 임시 디렉토리에 풀리며, `--serve` 실행 시 파이썬 자체 내장 HTTP 서버를 통해 서빙됩니다. 사용자는 다른 웹 앱 리소스 파일들을 함께 배포할 필요 없이 실행 바이너리 하나만으로 온전한 웹 UI 화면을 로컬 브라우저로 띄워 감상할 수 있습니다.
    ```bash
-   ./dist/git-llm-wiki --serve
+   ./dist/srdocs --serve
    ```
 
 ### 참고 자료

@@ -7,15 +7,15 @@ class WikiCache:
         self.repo_path = os.path.abspath(repo_path)
         
         # 실제 개발 코드가 있는 프로젝트 폴더에 캐시 파일을 저장하지 않고
-        # 사용자 홈 디렉토리의 .cache/git-llm-wiki 폴더에 저장합니다.
-        cache_dir = os.path.expanduser("~/.cache/git-llm-wiki")
+        # 사용자 홈 디렉토리의 .cache/srdocs 폴더에 저장합니다.
+        cache_dir = os.path.expanduser("~/.cache/srdocs")
             
         try:
             os.makedirs(cache_dir, exist_ok=True)
         except Exception as e:
             # 권한 문제 등으로 생성 불가한 경우 임시 디렉토리 사용
             import tempfile
-            cache_dir = os.path.join(tempfile.gettempdir(), "git-llm-wiki-cache")
+            cache_dir = os.path.join(tempfile.gettempdir(), "srdocs-cache")
             os.makedirs(cache_dir, exist_ok=True)
             
         path_hash = hashlib.sha256(self.repo_path.encode("utf-8")).hexdigest()
