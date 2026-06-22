@@ -238,9 +238,65 @@ class LLMSummarizer:
 
     def _summarize_routes_in_chunks(self, routes, metadata, chunk_size=35):
         """라우트 파일 목록이 너무 길 때, 이를 쪼개서 각 부분 요약을 먼저 얻고 합칩니다."""
-        summaries = []
         total = len(routes)
         
+        # 라우트 파일이 50개를 초과하면 디렉토리(패키지) 단위로 그룹화하여 요약
+        if total > 50:
+            print(f"   - 🛠️ 라우트 파일이 너무 많아 ({total}개) 디렉토리/패키지 단위로 그룹화하여 요약을 진행합니다.")
+            from collections import defaultdict
+            
+            # 적응형 패키지 레벨 결정 (그룹 수가 30개 이하가 될 때까지 depth 축소)
+            dir_groups = defaultdict(list)
+            for level in [3, 2, 1]:
+                dir_groups = defaultdict(list)
+                for r in routes:
+                    dirname = os.path.dirname(r).replace('\\', '/')
+                    # 소스 마커 기반 공통 접두사 제거
+                    for marker in ['/src/main/java/', '/src/main/', '/src/', '/app/', '/pages/']:
+                        if marker in dirname:
+                            dirname = dirname.split(marker)[-1]
+                            break
+                    else:
+                        for marker in ['src/main/java/', 'src/main/', 'src/', 'app/', 'pages/']:
+                            if dirname.startswith(marker):
+                                dirname = dirname[len(marker):]
+                                break
+                    
+                    parts = dirname.split('/')
+                    if len(parts) > level:
+                        dirname = "/".join(parts[:level])
+                    filename = os.path.basename(r)
+                    dir_groups[dirname].append(filename)
+                
+                if len(dir_groups) <= 30:
+                    break
+            
+            group_lines = []
+            for display_dir in sorted(dir_groups.keys()):
+                files_in_dir = dir_groups[display_dir]
+                if len(files_in_dir) > 5:
+                    files_str = ", ".join(files_in_dir[:5]) + f" 외 {len(files_in_dir)-5}개"
+                else:
+                    files_str = ", ".join(files_in_dir)
+                group_lines.append(f"  - {display_dir}/ ({files_str})")
+            
+            routes_summary_input = "\n".join(group_lines)
+            prompt = f"""다음 프로젝트의 페이지/라우트 디렉토리 및 주요 파일 목록을 분석하여, 각 디렉토리(패키지)가 어떤 화면군이나 역할을 담당할지 한글로 간결하게 요약해주세요.
+이 요약본은 프로젝트의 종합 아키텍처 개요 문서에 반영됩니다.
+
+프로젝트 이름: {metadata['name']}
+프로젝트 타입: {metadata['type']}
+
+[디렉토리 및 소속 라우트 파일 목록]
+{routes_summary_input}
+
+작성 요령:
+- 각 디렉토리/패키지별로 어떤 업무나 기능 그룹을 처리하는지 명확히 파악하여 한글로 보기 좋게 요약해주세요.
+- 확인되지 않은 세부 기능은 추측하지 마세요.
+"""
+            return self._generate(prompt)
+
+        summaries = []
         print(f"   - 🛠️ 라우트 파일이 너무 많아 ({total}개) 분할 요약을 진행합니다... (그룹당 {chunk_size}개)")
         
         for i in range(0, total, chunk_size):
@@ -336,10 +392,52 @@ README:
         return self._generate(prompt)
 
     def summarize_release(self, version_name, commits):
-        commit_log = ""
-        for c in commits[:50]:
-            commit_log += f"- {c['hash']}: {c['subject']} (by {c['author']})\n"
+        # 커밋 메시지 전처리 (길이 제한)
+        processed_commits = []
+        for c in commits:
+            subject = c['subject']
+            if len(subject) > 120:
+                subject = subject[:120] + "..."
+            processed_commits.append(f"- {c['hash']}: {subject} (by {c['author']})")
 
+        total = len(processed_commits)
+        # 커밋이 35개 이하면 한 번에 요약
+        if total <= 35:
+            commit_log = "\n".join(processed_commits)
+            return self._generate_prompt_for_release(version_name, commit_log)
+        
+        # 커밋이 많으면 30개 단위로 나누어 부분 요약 후 병합
+        print(f"   - 🛠️ 버전에 포함된 커밋이 너무 많아 ({total}개) 분할 요약을 진행합니다...")
+        chunk_size = 30
+        summaries = []
+        for i in range(0, total, chunk_size):
+            chunk = processed_commits[i:i+chunk_size]
+            chunk_num = (i // chunk_size) + 1
+            total_chunks = (total + chunk_size - 1) // chunk_size
+            print(f"     * 커밋 그룹 요약 진행 중 ({chunk_num}/{total_chunks})...")
+            
+            commit_log = "\n".join(chunk)
+            chunk_summary = self._generate_prompt_for_release(version_name, commit_log)
+            if chunk_summary:
+                summaries.append(chunk_summary)
+            else:
+                summaries.append(f"(커밋 {i+1}~{min(total, i+chunk_size)} 요약 실패)")
+                
+        # 부분 요약본들을 다시 최종 요약
+        combined_summaries = "\n\n".join(summaries)
+        merge_prompt = f"""다음은 프로젝트의 '{version_name}' 버전에 대해 분할하여 요약한 부분 변경 사항들입니다.
+이들을 종합하여 핵심 변경 사항(기능 추가, 버그 수정, 리팩토링 등)을 카테고리별로 일목요연하게 정리한 하나의 통합 릴리즈 노트(Markdown 한글)를 작성해주세요.
+
+[부분 요약본 목록]
+{combined_summaries}
+
+작성 형식:
+- 가독성이 좋은 Markdown 글머리 기호로 정리해주세요.
+- 중복되거나 무의미한 내용은 합치고, 깔끔하게 정리해 주세요.
+        """
+        return self._generate(merge_prompt)
+
+    def _generate_prompt_for_release(self, version_name, commit_log):
         prompt = f"""프로젝트의 '{version_name}' 버전에 해당하는 다음 커밋 목록을 분석하여, 이 버전에서 어떤 핵심 변경 사항(기능 추가, 버그 수정, 리팩토링 등)이 적용되었는지 한글로 요약해주세요.
 
 버전 이름: {version_name}

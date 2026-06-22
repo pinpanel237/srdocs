@@ -87,11 +87,31 @@ class GitAnalyzer:
                 except Exception:
                     pass
                     
-        # Project type detection
-        if os.path.exists(os.path.join(self.repo_path, 'Cargo.toml')):
+        # Project type detection (Root and 1-level subdirectories)
+        targets = ['Cargo.toml', 'package.json', 'setup.py', 'pyproject.toml', 'pom.xml', 'build.gradle', 'build.gradle.kts']
+        found_meta = {}
+        for f in targets:
+            # Check root
+            p = os.path.join(self.repo_path, f)
+            if os.path.exists(p):
+                found_meta[f] = p
+            else:
+                # Check 1-level deep subdirectories
+                try:
+                    for d in os.listdir(self.repo_path):
+                        dp = os.path.join(self.repo_path, d)
+                        if os.path.isdir(dp) and not d.startswith('.'):
+                            p2 = os.path.join(dp, f)
+                            if os.path.exists(p2):
+                                found_meta[f] = p2
+                                break
+                except Exception:
+                    pass
+
+        if 'Cargo.toml' in found_meta:
             metadata['type'] = 'Rust'
             try:
-                with open(os.path.join(self.repo_path, 'Cargo.toml'), 'r', encoding='utf-8') as f:
+                with open(found_meta['Cargo.toml'], 'r', encoding='utf-8') as f:
                     content = f.read()
                     name_match = re.search(r'\bname\s*=\s*"([^"]+)"', content)
                     ver_match = re.search(r'\bversion\s*=\s*"([^"]+)"', content)
@@ -99,10 +119,10 @@ class GitAnalyzer:
                     if ver_match: metadata['version'] = ver_match.group(1)
             except Exception:
                 pass
-        elif os.path.exists(os.path.join(self.repo_path, 'package.json')):
+        elif 'package.json' in found_meta:
             metadata['type'] = 'Node.js'
             try:
-                with open(os.path.join(self.repo_path, 'package.json'), 'r', encoding='utf-8') as f:
+                with open(found_meta['package.json'], 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     metadata['name'] = data.get('name', metadata['name'])
                     metadata['version'] = data.get('version', 'unknown')
@@ -110,11 +130,12 @@ class GitAnalyzer:
                     metadata['dependencies'] = deps
             except Exception:
                 pass
-        elif os.path.exists(os.path.join(self.repo_path, 'setup.py')) or os.path.exists(os.path.join(self.repo_path, 'pyproject.toml')):
+        elif 'setup.py' in found_meta or 'pyproject.toml' in found_meta:
             metadata['type'] = 'Python'
-            if os.path.exists(os.path.join(self.repo_path, 'setup.py')):
+            p = found_meta.get('setup.py') or found_meta.get('pyproject.toml')
+            if p.endswith('setup.py'):
                 try:
-                    with open(os.path.join(self.repo_path, 'setup.py'), 'r', encoding='utf-8') as f:
+                    with open(p, 'r', encoding='utf-8') as f:
                         content = f.read()
                         name_match = re.search(r'\bname\s*=\s*[\'"]([^\'"]+)[\'"]', content)
                         ver_match = re.search(r'\bversion\s*=\s*[\'"]([^\'"]+)[\'"]', content)
@@ -122,10 +143,10 @@ class GitAnalyzer:
                         if ver_match: metadata['version'] = ver_match.group(1)
                 except Exception:
                     pass
-        elif os.path.exists(os.path.join(self.repo_path, 'pom.xml')):
+        elif 'pom.xml' in found_meta:
             metadata['type'] = 'Java (Maven)'
             try:
-                with open(os.path.join(self.repo_path, 'pom.xml'), 'r', encoding='utf-8') as f:
+                with open(found_meta['pom.xml'], 'r', encoding='utf-8') as f:
                     content = f.read()
                     name_match = re.search(r'<artifactId>([^<]+)</artifactId>', content)
                     ver_match = re.search(r'<version>([^<]+)</version>', content)
@@ -138,12 +159,11 @@ class GitAnalyzer:
                     metadata['dependencies'] = sorted(list(set(deps)))[:15]
             except Exception:
                 pass
-        elif os.path.exists(os.path.join(self.repo_path, 'build.gradle')) or os.path.exists(os.path.join(self.repo_path, 'build.gradle.kts')):
+        elif 'build.gradle' in found_meta or 'build.gradle.kts' in found_meta:
             metadata['type'] = 'Java (Gradle)'
-            # Try to find version
-            gradle_file = 'build.gradle' if os.path.exists(os.path.join(self.repo_path, 'build.gradle')) else 'build.gradle.kts'
+            p = found_meta.get('build.gradle') or found_meta.get('build.gradle.kts')
             try:
-                with open(os.path.join(self.repo_path, gradle_file), 'r', encoding='utf-8') as f:
+                with open(p, 'r', encoding='utf-8') as f:
                     content = f.read()
                     ver_match = re.search(r'\bversion\s*=\s*[\'"]([^\'"]+)[\'"]', content)
                     if ver_match: metadata['version'] = ver_match.group(1).strip()

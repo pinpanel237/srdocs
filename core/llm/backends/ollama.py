@@ -1,4 +1,5 @@
 import urllib.request
+import urllib.error
 import json
 
 from ..base import LLMBackend
@@ -46,12 +47,25 @@ class OllamaBackend(LLMBackend):
         try:
             with urllib.request.urlopen(req, timeout=180) as response:
                 res = json.loads(response.read().decode('utf-8'))
+                if isinstance(res, dict) and 'error' in res:
+                    print(f"❌ Ollama API Error: {res['error']}")
+                    return ""
                 text = res.get('response', '')
                 if not text.strip():
                     print(f"⚠️ Warning: Ollama ({self.get_name()}) returned an empty response. The prompt might be too long for the model's context limit or server is overloaded.")
                 return text
+        except urllib.error.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.read().decode('utf-8')
+            except Exception:
+                pass
+            print(f"❌ HTTP Error calling Ollama ({self.get_name()}): {e.code} - {e.reason}")
+            if error_body:
+                print(f"Details: {error_body}")
+            return ""
         except Exception as e:
-            print(f"Error calling Ollama ({self.get_name()}): {e}")
+            print(f"❌ Error calling Ollama ({self.get_name()}): {e}")
             return ""
 
     def validate_config(self) -> bool:
